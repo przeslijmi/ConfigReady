@@ -3,7 +3,7 @@
 namespace Przeslijmi\ConfigReady;
 
 /**
- * Tool that scans all Apps in search of `config/specimen.php` file and copys them to library `.config/` dir.
+ * Tool that scans all Apps in search of `resources/configSpecimen.php` file and copys them to library `.config/` dir.
  */
 class Maker
 {
@@ -16,8 +16,9 @@ class Maker
      * \\ [
      * \\     'vendor'    => 'przeslijmi',
      * \\     'app'       => 'sirouter',
-     * \\     'uri'       => 'vendor/przeslijmi/sirouter/config/specimen.php',
+     * \\     'uri'       => 'vendor/przeslijmi/sirouter/resources/configSpecimen.php',
      * \\     'finalName' => '.config.przeslijmi.sirouter.php',
+     * \\     'finalUri'  => 'config/.config.przeslijmi.sirouter.php',
      * \\ ]
      *
      * @var   array[]
@@ -35,17 +36,18 @@ class Maker
     {
 
         // Create config dir.
-        if (file_exists('config/') === false) {
-            mkdir('config/');
-        }
+        $this->createConfigDir();
 
-        // Scan dirs to look for `specimen.php` file in every app.
+        // Scan dirs to look for `configSpecimen.php` file in every app.
         $this->findSpecimens();
 
         // Now work on every specimen.
         foreach (array_keys($this->specimens) as $specimenKey) {
             $this->installSpecimen($specimenKey);
         }
+
+        // Create includes file.
+        $this->makeIncludesFile();
 
         return $this;
     }
@@ -61,9 +63,35 @@ class Maker
     public function deleteCaller(string $callerUri) : self
     {
 
+        // Delete caller.
         if (file_exists($callerUri)) {
             unlink($callerUri);
         }
+
+        return $this;
+    }
+
+    /**
+     * Creates `config/` dir and empty `.config.php` file for start.
+     *
+     * @return self
+     * @since  v1.0
+     */
+    private function createConfigDir() : self
+    {
+
+        // Short way.
+        if (file_exists('config/') === true) {
+            return $this;
+        }
+
+        // Create dir.
+        mkdir('config/');
+
+        // Create empty personal configuration file.
+        $pointer = fopen('config/.config.php', 'w');
+        fputs($pointer, $this->getPhpHeader());
+        fclose($pointer);
 
         return $this;
     }
@@ -92,6 +120,16 @@ class Maker
             }
         }
 
+        // Look for specimen in main app.
+        $mainAppSpecimenUri = 'resources/configSpecimen.php';
+        if (file_exists($mainAppSpecimenUri)) {
+            $this->specimens[] = [
+                'vendor' => 'main',
+                'app'    => 'main',
+                'uri'    => $mainAppSpecimenUri,
+            ];
+        }
+
         return $this;
     }
 
@@ -111,15 +149,40 @@ class Maker
 
         // Calc final name.
         $spec['finalName'] = '.config.' . $spec['vendor'] . '.' . $spec['app'] . '.php';
+        $spec['finalUri']  = 'config/' . $spec['finalName'];
 
         // Save specimen.
         $this->specimens[$key] = $spec;
 
         // Copy file.
         if (file_exists('config/' . $spec['finalName']) === false) {
-            var_dump('copying');
-            var_dump(copy($spec['uri'], 'config/' . $spec['finalName']));
+            copy($spec['uri'], $spec['finalUri']);
         }
+
+        return $this;
+    }
+
+    /**
+     * Generate new `config/.config.includes.php` file.
+     *
+     * @return self
+     * @since  v1.0
+     */
+    private function makeIncludesFile() : self
+    {
+
+        // Lvd.
+        $code = $this->getPhpHeader();
+
+        // Fill up with includes.
+        foreach ($this->specimens as $specimen) {
+            $code .= 'require \'' . $specimen['finalUri'] . '\';' . "\n";
+        }
+
+        // Save file.
+        $pointer = fopen('config/.config.includes.php', 'w');
+        fputs($pointer, $code);
+        fclose($pointer);
 
         return $this;
     }
@@ -136,7 +199,7 @@ class Maker
     {
 
         // Lvd.
-        $location = $appUri . 'config/specimen.php';
+        $location = $appUri . 'resources/configSpecimen.php';
         $vendor   = explode('/', $appUri)[1];
         $app      = explode('/', $appUri)[2];
 
@@ -189,5 +252,17 @@ class Maker
         }
 
         return $result;
+    }
+
+    /**
+     * Returns header of every PHP file.
+     *
+     * @return string
+     * @since  v1.0
+     */
+    private function getPhpHeader() : string
+    {
+
+        return chr(60) . chr(63) . 'php declare(strict_types=1);' . "\n\n";
     }
 }
