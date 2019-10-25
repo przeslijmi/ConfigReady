@@ -64,7 +64,7 @@ class Maker
     {
 
         // Delete caller.
-        if (file_exists($callerUri)) {
+        if (file_exists($callerUri) === true) {
             unlink($callerUri);
         }
 
@@ -122,7 +122,7 @@ class Maker
 
         // Look for specimen in main app.
         $mainAppSpecimenUri = 'resources/configSpecimen.php';
-        if (file_exists($mainAppSpecimenUri)) {
+        if (file_exists($mainAppSpecimenUri) === true) {
             $this->specimens[] = [
                 'vendor' => 'main',
                 'app'    => 'main',
@@ -237,7 +237,7 @@ class Maker
         $dirHandle = opendir($dirUri);
 
         // Read dir.
-        while (false !== ($element = readdir($dirHandle))) {
+        while (false !== ( $element = readdir($dirHandle) )) {
 
             // Ignore those.
             if ($element === '.' || $element === '..') {
